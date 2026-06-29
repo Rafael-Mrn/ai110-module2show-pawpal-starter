@@ -1,0 +1,48 @@
+classDiagram
+    class Owner {
+        +str name
+        +dict~str, list~ availability
+        +list~str~ contacts
+        +list~Pet~ pets
+        +add_pet(pet Pet) None
+        +remove_pet(pet Pet) None
+        +update_availability(day str, times list) None
+    }
+
+    class Pet {
+        +str name
+        +str pet_type
+        +str breed
+        +list~str~ medical_conditions
+        +float weight
+        +list~Task~ tasks
+        +add_task(task Task) None
+        +get_care_suggestions() list~str~
+    }
+
+    class Task {
+        +str name
+        +str category
+        +int priority
+        +int duration_minutes
+        +bool completed
+        +datetime due_time
+        +mark_complete() None
+        +is_overdue() bool
+        +send_alert() None
+    }
+
+    class Scheduler {
+        +Owner owner
+        +dict~str, list~ weekly_availability
+        +build_daily_plan(pet Pet, day str) list~Task~
+        +assign_time_of_day(task Task) datetime
+        +suggest_activities(pet Pet) list~str~
+        +explain_plan() str
+    }
+
+    Owner "1" --> "*" Pet : owns
+    Pet "1" --> "*" Task : has
+    Scheduler "1" --> "1" Owner : plans for
+    Scheduler ..> Task : schedules
+    Scheduler ..> Pet : reads info

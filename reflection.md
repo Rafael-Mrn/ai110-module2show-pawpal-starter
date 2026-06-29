@@ -4,8 +4,14 @@
 
 **a. Initial design**
 
-- Briefly describe your initial UML design.
-- What classes did you include, and what responsibilities did you assign to each?
+- Briefly describe your initial UML design.  
+  My initial UML design will include classes to support three main actions. The first action the user should be able to perform is track pet care tasks by seeing a checklist of items to complete everyday for their pet. The second action should be to upload information on their pet to personalize their experience. Lastly, they should also be able to produce and choose a plan that was automated. 
+- What classes did you include, and what responsibilities did you assign to each?  
+  1. Owner - store information of the owner. Name, availability, contacts/co-owners attributes. Ability to add/remove pets. 
+  2. Pet - track name, pet type, breed, medical conditions, and weight attributes. Provide health/care suggestions based on info. 
+  3. Task - responsibilities include tracking pet care tasks walks, feeding, medications, grooming, enrichment as attributes. Create a list of daily tasks, update list based on completion, send alerts.
+  4. Scheduler - produce a plan based on pet owner's availability. Set time of day for walks + suggest. Weekly availability attitribute (what days and specific times the pet owner is free). Aside from scheduling required tasks, the plan can introduce pet care advice and activities.
+  
 
 **b. Design changes**
 
