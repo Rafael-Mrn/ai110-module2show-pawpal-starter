@@ -16,6 +16,7 @@ classDiagram
         +list~str~ medical_conditions
         +float weight
         +list~Task~ tasks
+        +str pet_id
         +add_task(task Task) None
         +get_care_suggestions() list~str~
     }
@@ -25,24 +26,39 @@ classDiagram
         +str category
         +int priority
         +int duration_minutes
-        +bool completed
+        +int frequency_per_day
+        +str preferred_time_of_day
+    }
+
+    class PlannedTask {
+        +Task task
         +datetime due_time
+        +bool completed
         +mark_complete() None
         +is_overdue() bool
         +send_alert() None
     }
 
+    class DailyPlan {
+        +str day
+        +list~PlannedTask~ scheduled
+        +list~PlannedTask~ deferred
+        +list~str~ suggestions
+        +str rationale
+    }
+
     class Scheduler {
         +Owner owner
-        +dict~str, list~ weekly_availability
-        +build_daily_plan(pet Pet, day str) list~Task~
-        +assign_time_of_day(task Task) datetime
-        +suggest_activities(pet Pet) list~str~
-        +explain_plan() str
+        +build_daily_plan(day str) DailyPlan
+        +assign_time_of_day(planned PlannedTask, day str, taken list) datetime
+        +suggest_activities(pet Pet, free_minutes int) list~str~
+        +explain_plan(plan DailyPlan) str
     }
 
     Owner "1" --> "*" Pet : owns
-    Pet "1" --> "*" Task : has
+    Pet "1" --> "*" Task : has templates
+    PlannedTask "*" --> "1" Task : instance of
     Scheduler "1" --> "1" Owner : plans for
-    Scheduler ..> Task : schedules
-    Scheduler ..> Pet : reads info
+    Scheduler ..> Pet : reads tasks + suggestions
+    Scheduler ..> DailyPlan : produces
+    DailyPlan "1" --> "*" PlannedTask : contains
