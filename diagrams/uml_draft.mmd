@@ -6,7 +6,7 @@ classDiagram
         +list~Pet~ pets
         +add_pet(pet Pet) None
         +remove_pet(pet Pet) None
-        +update_availability(day str, times list) None
+        +update_availability(day str, windows list) None
     }
 
     class Pet {
@@ -50,7 +50,7 @@ classDiagram
     class Scheduler {
         +Owner owner
         +build_daily_plan(day str) DailyPlan
-        +assign_time_of_day(planned PlannedTask, day str, taken list) datetime
+        +assign_time_of_day(planned PlannedTask, day str, windows list) datetime
         +suggest_activities(pet Pet, free_minutes int) list~str~
         +explain_plan(plan DailyPlan) str
     }

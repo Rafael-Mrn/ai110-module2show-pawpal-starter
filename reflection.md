@@ -17,6 +17,7 @@
 
 - Did your design change during implementation?
 - If yes, describe at least one change and why you made it.
+  Yes, I had to split Task into a recurring template (Task) and a per-day instance (PlannedTask). Completion and timing state were living on the same object stored in Pet.tasks. If the scheduler handed those same objects to the daily plan, calling mark_complete() would mutate the master list — so "feed the dog" would stay completed forever and the next day's plan would be wrong.
 
 ---
 
