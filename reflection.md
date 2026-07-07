@@ -43,27 +43,34 @@
 
 **a. How you used AI**
 
-- How did you use AI tools during this project (for example: design brainstorming, debugging, refactoring)?
-- What kinds of prompts or questions were most helpful?
+- How did you use AI tools during this project (for example: design brainstorming, debugging, refactoring)?  
+  AI supported me throughout the entire build for this project. During the design and brainstorming phase, I used structured prompts so that the AI could propose a class structure that meant the minimum requirements. Once the minimum requirements were met, I went back and forth with Claude Code to implement logical features that should be found in a pet tracker. Debugging and refactoring was done in the later part of the projec when polishing the UI. I found that Claude Code didn't implement all the features it build in the backend so this was were I gave much longer and more detailed custom prompts. 
+- What kinds of prompts or questions were most helpful?  
+  Questions that asked for context and an explanation of the code were the most helpful as they helped me stay on top of the build. I found that building with Claude Code can go at a fast pace so it is important to take time to understand the current code and pay attention to the suggestions/explanations that Claude was giving me.
 
 **b. Judgment and verification**
 
-- Describe one moment where you did not accept an AI suggestion as-is.
-- How did you evaluate or verify what the AI suggested?
-
+- Describe one moment where you did not accept an AI suggestion as-is.  
+  A moment where I did not accept an AI suggestion as-is was when building out the Schedular. Claude assumed that the all tasks were given 30-minute blocks and should be scheduled as so however, I ensured that the feature would allow the user to define the length of each time. The algorithmic layer made use of these times and streamlined the experience for the user (conflict deteciton and filtering). 
+- How did you evaluate or verify what the AI suggested?  
+While tests and main.py helped verify the logic of the features, much of my criticsm towards AI suggestions was based on the Streamlit UI. Claude not only left out core features in the UI even after requesting it to do so, but also encountered a bug. I found that testing the user interface was the most helpful in ensuring that the app provided a smooth experience and served its purpose.
 ---
 
 ## 4. Testing and Verification
 
 **a. What you tested**
 
-- What behaviors did you test?
-- Why were these tests important?
+- What behaviors did you test?  
+  Claude wrote 29 tests in `test_pawpal.py` covering the five core scheduler behaviors which were chronological sorting (including stable ties and untimed-last), recurrence (daily +1 day, weekly +7 days, one-offs returning `None`), conflict detection, priority-based placement with deferral, and filtering by pet and completion status.
+- Why were these tests important?  
+  These are the behaviors the whole app depends on, so verifying them directly gave me confidence that the logic layer is correct before wiring it into the UI. I deliberately included edge cases like empty inputs, exact-time ties, and half-open boundary overlaps to ensure the Schedular worked even through user error.
 
 **b. Confidence**
 
-- How confident are you that your scheduler works correctly?
-- What edge cases would you test next if you had more time?
+- How confident are you that your scheduler works correctly?  
+  I am quite confident since all 29 tests pass and the core scheduling logic is directly verified. While the tests verify the backend logic, a manual check of the Streamlit UI and a thorough check by Claude when debugging makes me condfident in the final state of the system.
+- What edge cases would you test next if you had more time?  
+  I'd freeze the clock to make the `datetime.now()` fallback fully deterministic, and add end-to-end UI tests for `app.py` (e.g. adding a pet then generating a schedule) plus overlapping owner availability windows and tasks whose preferred time falls outside the free window.
 
 ---
 
@@ -71,12 +78,15 @@
 
 **a. What went well**
 
-- What part of this project are you most satisfied with?
+- What part of this project are you most satisfied with?  
+  I am most satisfied with the UI of the project since it was the final aspect of the system that most users would find as most important. Having many core features built out first, then being able to implement them in a UI was the most satisfying part as it ensured that the behavior was well thought out and resilient.
 
 **b. What you would improve**
 
-- If you had another iteration, what would you improve or redesign?
+- If you had another iteration, what would you improve or redesign?  
+  If I had another iteration, I would improve the structure of the app by implementing a calendar feature to better visualize the tasks, especially those that may occur weekly or monthly. However, I figured that using a table for daily tasks is the most useful since a pet owner is mostly concerned in making sure they track the tasks of that day. 
 
 **c. Key takeaway**
 
-- What is one important thing you learned about designing systems or working with AI on this project?
+- What is one important thing you learned about designing systems or working with AI on this project?  
+I learned that context and scaffolding are some of the best ways to use Claude code. My prior experience was using AI through a website rather than integrating it directly into my workflow. While context helps the AI understand the code and avoid the extra time needed to explain the codebase or issue at hand, scaffolding avoided what would have otherwise been many rough patches. Being in charge of design made it so Claude was simply responsible for execution and making any possible suggestions. As a result, I figure that this is the best way to use AI for coding.

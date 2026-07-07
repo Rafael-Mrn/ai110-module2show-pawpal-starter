@@ -1,0 +1,79 @@
+classDiagram
+    class Owner {
+        +str name
+        +dict~str, list~ availability
+        +list~str~ contacts
+        +list~Pet~ pets
+        +add_pet(pet Pet) None
+        +remove_pet(pet Pet) None
+        +update_availability(day str, windows list) None
+    }
+
+    class Pet {
+        +str name
+        +str pet_type
+        +str breed
+        +list~str~ medical_conditions
+        +float weight
+        +list~Task~ tasks
+        +str pet_id
+        +add_task(task Task) None
+        +get_care_suggestions() list~str~
+    }
+
+    class Task {
+        +str name
+        +str category
+        +int priority
+        +int duration_minutes
+        +int frequency_per_day
+        +str preferred_time_of_day
+        +str recurrence
+    }
+    note for Task "recurrence: none | daily | weekly | monthly"
+
+    class PlannedTask {
+        +Task task
+        +datetime due_time
+        +bool completed
+        +Pet pet
+        +mark_complete() PlannedTask
+        +next_occurrence() PlannedTask
+        +is_overdue() bool
+        +send_alert() None
+    }
+
+    class DailyPlan {
+        +str day
+        +list~PlannedTask~ scheduled
+        +list~PlannedTask~ deferred
+        +list~str~ suggestions
+        +str rationale
+    }
+
+    class Scheduler {
+        +Owner owner
+        +build_daily_plan(day str) DailyPlan
+        +assign_time_of_day(planned PlannedTask, day str, windows list) datetime
+        +suggest_activities(pet Pet, free_minutes int) list~str~
+        +explain_plan(plan DailyPlan) str
+        +sort_by_time(tasks list) list
+        +filter_tasks(tasks list, pet_name str, completed bool) list
+        +detect_conflicts(planned_tasks list) list~str~
+    }
+
+    class FreeWindow {
+        +datetime start
+        +datetime end
+        +datetime cursor
+    }
+
+    Owner "1" --> "*" Pet : owns
+    Pet "1" --> "*" Task : has templates
+    PlannedTask "*" --> "1" Task : instance of
+    PlannedTask "*" --> "1" Pet : for
+    Scheduler "1" --> "1" Owner : plans for
+    Scheduler ..> PlannedTask : creates
+    Scheduler ..> DailyPlan : produces
+    Scheduler ..> FreeWindow : uses internally
+    DailyPlan "1" --> "*" PlannedTask : contains

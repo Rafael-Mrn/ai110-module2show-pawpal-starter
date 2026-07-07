@@ -141,16 +141,102 @@ test_pawpal.py::TestEdgeCases::test_suggestions_only_when_free_time_left PASSED 
 | Task sorting | `Scheduler.sort_by_time` | Orders tasks by preferred time of day (earliest first); untimed tasks sort last. Sorts the zero-padded `"HH:MM"` strings directly via a lambda key. |
 | Filtering | `Scheduler.filter_tasks` | Returns the subset of tasks matching a pet name and/or completion status. Completion lives on `PlannedTask`, so the status filter only matches per-day occurrences. |
 | Conflict handling | `Scheduler.detect_conflicts` | Lightweight pairwise check across all pets; flags occurrences whose `[start, start+duration)` intervals overlap. Returns warning strings (empty list if none) and never crashes. |
-| Recurring tasks | `PlannedTask.mark_complete` / `next_occurrence` | Completing a recurring task auto-creates its next occurrence using `timedelta` (daily → +1 day, weekly → +7 days); one-off tasks return `None`. |
+| Recurring tasks | `PlannedTask.mark_complete` / `next_occurrence` | Completing a recurring task auto-creates its next occurrence (daily → +1 day, weekly → +7 days via `timedelta`; monthly → +1 calendar month with day-clamping); one-off tasks return `None`. |
 
 ## 📸 Demo Walkthrough
 
-Describe your app in numbered steps so a reader can follow along without watching a video:
+PawPal+ runs two ways: a **Streamlit web app** (`app.py`) for interactive use, and a **command-line demo** (`main.py`) that prints a full scenario to the terminal.
 
-1. <!-- Describe this step -->
-2. <!-- Describe this step -->
-3. <!-- Describe this step -->
-4. <!-- Describe this step -->
-5. <!-- Add more steps as needed -->
+```bash
+streamlit run app.py   # interactive web UI
+python main.py         # scripted CLI demo
+```
+
+### Main UI features (`app.py`)
+
+The web app is a single page split into four sections, top to bottom:
+
+1. **Owner name** — a text box at the top; everything you add belongs to this owner.
+2. **Add a Pet** — enter name, species, breed, and weight, then click **Add pet**. A live table lists every pet and how many tasks each has.
+3. **Add a Task** — pick which pet, then set the task title, category, duration, priority (low/medium/high), preferred time, and how often it repeats (none/daily/weekly). The current tasks appear in a table that is **sorted by time** and **filterable by pet**, with a live **conflict pre-check** banner.
+4. **Build Schedule** — choose the day and your free-from/free-until window, then click **Generate schedule**. The plan shows as an interactive table where you can tick tasks **Done**, filter by pet and status, see conflict/deferral warnings, and expand **"Why this plan?"** for the scheduler's reasoning.
+
+### Example workflow
+
+1. Type an owner name (e.g. *Rafael*).
+2. **Add a pet** — *Rex*, a dog → he appears in the pets table.
+3. **Add a task** for Rex — "Morning walk", 45 min, high priority, preferred 07:00, repeats daily.
+4. Add a second pet (*Mochi*) and a task ("Kidney meds", 10 min, high priority, 07:30, daily). The task table now shows both, **sorted by time**.
+5. **Generate a schedule** for today with a free window of 07:00–19:00.
+6. **View today's schedule** — tasks are placed highest-priority-first, each in its own slot, with spare-time care suggestions listed below.
+7. Tick **Morning walk** as Done → because it repeats daily, PawPal+ shows *"↻ 'Morning walk' repeats daily — next on Wed…"*.
+
+### Key Scheduler behaviors on display
+
+- **Sorting** — task tables are ordered chronologically by preferred time (untimed tasks last) via `Scheduler.sort_by_time`.
+- **Priority placement** — the highest-priority tasks claim time first; anything that doesn't fit the free window is listed under a **"Didn't fit"** warning (`build_daily_plan`).
+- **Conflict warnings** — if two tasks want overlapping times, a ⚠️ banner names the clash; back-to-back tasks (one ends as the next begins) are *not* flagged (`Scheduler.detect_conflicts`).
+- **Filtering** — narrow the schedule by pet and by Pending/Done status (`Scheduler.filter_tasks`).
+- **Recurrence** — checking a recurring task off auto-computes its next occurrence (+1 day for daily, +7 for weekly); one-off tasks don't repeat (`PlannedTask.next_occurrence`).
+
+### Sample CLI output (`python main.py`)
+
+The demo builds an owner with two pets and four tasks, then walks through scheduling, sorting, filtering, recurrence, and conflict detection:
+
+```text
+============================================
+  Today's Schedule for Rafael (Tue)
+============================================
+Plan for Tue:
+Scheduled 4 task(s), highest priority first:
+  - 07:30  Kidney meds (priority 10, 10min)
+  - 17:30  Evening feeding (priority 7, 10min)
+  - 07:40  Morning walk (priority 6, 45min)
+  - 18:00  Weekly bath (priority 4, 30min)
+Spare time available — optional suggestions:
+  - Look up breed-specific needs for a Beagle.
+  - Add an enrichment activity to keep Rex stimulated.
+  - Monitor Mochi's kidney disease; check with the vet about managing it.
+  - Look up breed-specific needs for a Tabby.
+  - Add an enrichment activity to keep Mochi stimulated.
+
+============================================
+  Tasks in INSERTION order (out of order)
+============================================
+  07:00  Morning walk
+  18:00  Weekly bath
+  07:30  Kidney meds
+  17:30  Evening feeding
+
+============================================
+  Tasks SORTED by time (Scheduler.sort_by_time)
+============================================
+  07:00  Morning walk
+  07:30  Kidney meds
+  17:30  Evening feeding
+  18:00  Weekly bath
+
+============================================
+  Filter by pet name 'Mochi' (Scheduler.filter_tasks)
+============================================
+  07:30  Kidney meds
+  17:30  Evening feeding
+
+============================================
+  Recurrence: complete a task -> next occurrence
+============================================
+  Kidney meds (daily): done Tue 2026-07-07 07:30  ->  next Wed 2026-07-08 07:30
+  Evening feeding (none): one-off, no repeat
+  Morning walk (daily): done Tue 2026-07-07 07:40  ->  next Wed 2026-07-08 07:40
+  Weekly bath (weekly): done Tue 2026-07-07 18:00  ->  next Tue 2026-07-14 18:00
+
+============================================
+  Conflict detection (Scheduler.detect_conflicts)
+============================================
+  WARNING: 'Backyard play' (Rex, 08:00-08:20) overlaps 'Quick brush' (Mochi, 08:00-08:15)
+
+  Checking the generated plan for conflicts...
+  No conflicts.
+```
 
 **Screenshot or video** *(optional)*: <!-- Insert a screenshot or link to a demo video here -->

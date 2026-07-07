@@ -17,6 +17,7 @@ Design notes:
 
 from __future__ import annotations
 
+import calendar
 import uuid
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
@@ -24,9 +25,24 @@ from datetime import date, datetime, timedelta
 # Weekday name (first 3 letters, lowercased) -> Python's date.weekday() index.
 WEEKDAY_INDEX = {"mon": 0, "tue": 1, "wed": 2, "thu": 3, "fri": 4, "sat": 5, "sun": 6}
 
-# Recurrence interval -> number of days until the next occurrence. Anything not
-# in here (e.g. "none") is treated as a one-off that does not repeat.
+# Fixed-length recurrence intervals -> days until the next occurrence. "monthly"
+# is handled separately (calendar months vary in length). Anything not recurring
+# (e.g. "none") is treated as a one-off that does not repeat.
 RECURRENCE_DAYS = {"daily": 1, "weekly": 7}
+RECURRENCE_OPTIONS = ("none", "daily", "weekly", "monthly")
+
+
+def _add_one_month(moment: datetime) -> datetime:
+    """Return `moment` advanced by one calendar month, clamping the day.
+
+    Handles year rollover and short months (e.g. Jan 31 -> Feb 28) so the
+    result is always a valid date.
+    """
+    month_index = moment.month  # 1-12; adding 1 (0-based) lands on next month
+    year = moment.year + month_index // 12
+    month = month_index % 12 + 1
+    day = min(moment.day, calendar.monthrange(year, month)[1])
+    return moment.replace(year=year, month=month, day=day)
 
 
 @dataclass
@@ -43,7 +59,7 @@ class Task:
     duration_minutes: int = 0
     frequency_per_day: int = 1
     preferred_time_of_day: str | None = None  # "08:00" or None
-    # How often this task repeats across days: "none", "daily", or "weekly".
+    # How often this task repeats: "none", "daily", "weekly", or "monthly".
     # Completing a recurring occurrence auto-creates the next one.
     recurrence: str = "none"
 
@@ -65,16 +81,19 @@ class PlannedTask:
         return self.next_occurrence()
 
     def next_occurrence(self) -> "PlannedTask | None":
-        """Return the next occurrence for a recurring task (daily +1d, weekly +7d), else None."""
-        days = RECURRENCE_DAYS.get(self.task.recurrence)
-        if days is None:
-            return None
+        """Return the next occurrence for a recurring task, else None.
+
+        daily -> +1 day, weekly -> +7 days, monthly -> +1 calendar month.
+        """
+        recurrence = self.task.recurrence
         base = self.due_time if self.due_time is not None else datetime.now()
-        return PlannedTask(
-            task=self.task,
-            due_time=base + timedelta(days=days),
-            pet=self.pet,
-        )
+        if recurrence == "monthly":
+            next_due = _add_one_month(base)
+        elif recurrence in RECURRENCE_DAYS:
+            next_due = base + timedelta(days=RECURRENCE_DAYS[recurrence])
+        else:
+            return None
+        return PlannedTask(task=self.task, due_time=next_due, pet=self.pet)
 
     def is_overdue(self) -> bool:
         """Return True if past due_time and not completed."""
