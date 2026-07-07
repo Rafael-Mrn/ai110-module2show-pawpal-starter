@@ -25,13 +25,17 @@
 
 **a. Constraints and priorities**
 
-- What constraints does your scheduler consider (for example: time, priority, preferences)?
+- What constraints does your scheduler consider (for example: time, priority, preferences)?  
+  My scheduler works within three constraints: the owner's free-time windows, each task's priority, and each task's preferred time of day. Free time is a hard limit since a task simply can't be placed if there's no room, so it acts as the outer boundary. Within that boundary, priority decides ordering and preferred time is honored when it happens to fit.
 - How did you decide which constraints mattered most?
+  I decided that available time mattered most because it's a physical limit. The owner can't be in two places at once so nothing can be scheduled outside their windows. Priority came next since medication and feeding must win over optional enrichment when time is short, and preferred time ranked last because it's a nice-to-have that shouldn't block a higher-priority task from being placed.
 
 **b. Tradeoffs**
 
 - Describe one tradeoff your scheduler makes.
+  It uses a greedy, first-fit placement: it sorts tasks by priority and drops each one into the earliest window it fits, never backtracking to reshuffle earlier choices. This means a high-priority task can claim an early slot that a preferred-time task wanted, and that preferred task then gets bumped to first-fit elsewhere or deferred.
 - Why is that tradeoff reasonable for this scenario?
+  For a daily pet-care list of a handful of tasks, a greedy pass is fast, predictable, and easy to explain to the owner, and it guarantees the most important tasks are placed first. A globally optimal schedule would add real complexity for little benefit at this scale, so guaranteeing the critical tasks land beats squeezing out a perfect arrangement.
 
 ---
 

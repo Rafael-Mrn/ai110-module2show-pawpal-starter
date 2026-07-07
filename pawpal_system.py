@@ -24,6 +24,10 @@ from datetime import date, datetime, timedelta
 # Weekday name (first 3 letters, lowercased) -> Python's date.weekday() index.
 WEEKDAY_INDEX = {"mon": 0, "tue": 1, "wed": 2, "thu": 3, "fri": 4, "sat": 5, "sun": 6}
 
+# Recurrence interval -> number of days until the next occurrence. Anything not
+# in here (e.g. "none") is treated as a one-off that does not repeat.
+RECURRENCE_DAYS = {"daily": 1, "weekly": 7}
+
 
 @dataclass
 class Task:
@@ -39,6 +43,9 @@ class Task:
     duration_minutes: int = 0
     frequency_per_day: int = 1
     preferred_time_of_day: str | None = None  # "08:00" or None
+    # How often this task repeats across days: "none", "daily", or "weekly".
+    # Completing a recurring occurrence auto-creates the next one.
+    recurrence: str = "none"
 
 
 @dataclass
@@ -48,10 +55,26 @@ class PlannedTask:
     task: Task
     due_time: datetime | None = None
     completed: bool = False
+    # Which pet this occurrence is for. Set when the scheduler stamps it out,
+    # so we can filter a plan's occurrences by pet name.
+    pet: Pet | None = None
 
-    def mark_complete(self) -> None:
-        """Mark this occurrence as done (does not touch the Task template)."""
+    def mark_complete(self) -> "PlannedTask | None":
+        """Mark this occurrence done; return its next occurrence (None if one-off)."""
         self.completed = True
+        return self.next_occurrence()
+
+    def next_occurrence(self) -> "PlannedTask | None":
+        """Return the next occurrence for a recurring task (daily +1d, weekly +7d), else None."""
+        days = RECURRENCE_DAYS.get(self.task.recurrence)
+        if days is None:
+            return None
+        base = self.due_time if self.due_time is not None else datetime.now()
+        return PlannedTask(
+            task=self.task,
+            due_time=base + timedelta(days=days),
+            pet=self.pet,
+        )
 
     def is_overdue(self) -> bool:
         """Return True if past due_time and not completed."""
@@ -169,7 +192,7 @@ class Scheduler:
         for pet in self.owner.pets:
             for task in pet.tasks:
                 for _ in range(max(1, task.frequency_per_day)):
-                    occurrences.append(PlannedTask(task=task))
+                    occurrences.append(PlannedTask(task=task, pet=pet))
 
         # 2. Highest priority first; sorted() is stable so ties keep input order.
         occurrences.sort(key=lambda p: p.task.priority, reverse=True)
@@ -196,6 +219,81 @@ class Scheduler:
         )
         plan.rationale = self.explain_plan(plan)
         return plan
+
+    def sort_by_time(self, tasks=None) -> list:
+        """Return tasks sorted by preferred time of day, earliest first (untimed last).
+
+        Sorts the owner's tasks when `tasks` is None. 'HH:MM' strings are
+        zero-padded, so the lambda key can compare them as plain strings.
+        """
+        if tasks is None:
+            tasks = [t for pet in self.owner.pets for t in pet.tasks]
+        return sorted(tasks, key=lambda item: self._time_key(item))
+
+    def filter_tasks(self, tasks, pet_name=None, completed=None) -> list:
+        """Return the tasks matching the given pet name and/or completion status.
+
+        Completion lives on PlannedTask, so a `completed` filter only matches
+        occurrences, not bare Task templates. No criteria returns a copy.
+        """
+        result = list(tasks)
+        if pet_name is not None:
+            result = [t for t in result if self._pet_name(t) == pet_name]
+        if completed is not None:
+            result = [
+                t
+                for t in result
+                if isinstance(t, PlannedTask) and t.completed == completed
+            ]
+        return result
+
+    def detect_conflicts(self, planned_tasks) -> list[str]:
+        """Return warning messages for any occurrences whose scheduled times overlap.
+
+        Lightweight pairwise check across all pets; occurrences with no due_time
+        are skipped. Returns an empty list when there are none — never raises.
+        """
+        timed = [p for p in planned_tasks if p.due_time is not None]
+        warnings: list[str] = []
+        for i in range(len(timed)):
+            for j in range(i + 1, len(timed)):
+                a, b = timed[i], timed[j]
+                a_end = a.due_time + timedelta(
+                    minutes=max(0, a.task.duration_minutes)
+                )
+                b_end = b.due_time + timedelta(
+                    minutes=max(0, b.task.duration_minutes)
+                )
+                # Half-open overlap test: touching end-to-start is not a clash.
+                if a.due_time < b_end and b.due_time < a_end:
+                    warnings.append(self._conflict_message(a, a_end, b, b_end))
+        return warnings
+
+    @staticmethod
+    def _conflict_message(a, a_end, b, b_end) -> str:
+        """Build a human-readable warning for an overlapping pair."""
+        def label(p, end) -> str:
+            pet = p.pet.name if p.pet else "?"
+            span = f"{p.due_time:%H:%M}-{end:%H:%M}"
+            return f"'{p.task.name}' ({pet}, {span})"
+
+        return f"WARNING: {label(a, a_end)} overlaps {label(b, b_end)}"
+
+    @staticmethod
+    def _time_key(item) -> str:
+        """Return the 'HH:MM' sort key for a Task or PlannedTask."""
+        task = item.task if isinstance(item, PlannedTask) else item
+        return task.preferred_time_of_day or "99:99"
+
+    def _pet_name(self, item) -> str | None:
+        """Return the owning pet's name for a Task or PlannedTask, or None."""
+        if isinstance(item, PlannedTask):
+            return item.pet.name if item.pet else None
+        # Bare Task template: find which pet's list holds this exact object.
+        for pet in self.owner.pets:
+            if any(item is t for t in pet.tasks):
+                return pet.name
+        return None
 
     def assign_time_of_day(
         self, planned: PlannedTask, day: str, windows: list[_FreeWindow]
